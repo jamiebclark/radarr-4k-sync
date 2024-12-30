@@ -18,8 +18,9 @@
   },
   "scripts": {
     "clean": "rimraf dist/*",
-    "build": "npm run prebuild && npx tsc",
+    "build": "npm run prebuild && npx tsc && npm run postbuild",
     "prebuild": "npm run clean",
+    "postbuild": "cp .env dist/.env",
     "sync:dev": "npx ts-node ./src/syncRadarr.ts"
   }
 }

@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2020", // Target ECMAScript version.
+    "module": "CommonJS", // Use CommonJS for Node.js compatibility.
+    "rootDir": "./src", // Root folder containing TypeScript source files.
+    "outDir": "./dist", // Output directory for compiled JavaScript files.
+    "strict": true, // Enable strict type-checking options.
+    "esModuleInterop": true, // Enables interoperability with CommonJS modules.
+    "skipLibCheck": true, // Skip type checking of declaration files.
+    "forceConsistentCasingInFileNames": true, // Ensure consistent file name casing.
+    "resolveJsonModule": true, // Allow importing JSON files as modules.
+    "moduleResolution": "node", // Use Node.js module resolution strategy.
+    "allowSyntheticDefaultImports": true, // Allow default imports from modules with no default export.
+    "noImplicitReturns": true, // Warn on missing return statements.
+    "noUnusedLocals": true, // Error on unused local variables.
+    "noUnusedParameters": true, // Error on unused function parameters.
+    "noFallthroughCasesInSwitch": true // Prevent fallthrough in switch statements.
+  },
+  "include": [
+    "src/**/*" // Include all TypeScript files in the src folder.
+  ],
+  "exclude": [
+    "node_modules", // Exclude the node_modules folder.
+    "dist" // Exclude the output directory.
+  ]
+}

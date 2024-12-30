@@ -13,10 +13,13 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
+    "rimraf": "^6.0.1",
     "ts-node": "^10.9.2"
   },
   "scripts": {
-    "build": "npx tsc",
+    "clean": "rimraf dist/*",
+    "build": "npm run prebuild && npx tsc",
+    "prebuild": "npm run clean",
     "sync:dev": "npx ts-node ./src/syncRadarr.ts"
   }
 }

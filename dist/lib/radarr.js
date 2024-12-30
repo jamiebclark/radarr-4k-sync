@@ -10,6 +10,8 @@ exports.fetchMoviesFromList = fetchMoviesFromList;
 exports.updateMovieMonitoring = updateMovieMonitoring;
 exports.deleteMovieDirectory = deleteMovieDirectory;
 exports.removeMovie = removeMovie;
+exports.fetchDownloadingMovieIds = fetchDownloadingMovieIds;
+exports.stopMovieDownload = stopMovieDownload;
 const axios_1 = __importDefault(require("axios"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
@@ -20,8 +22,11 @@ function getApiAuth(url, apiKey, label = 'API') {
 }
 function getApi(auth) {
     return axios_1.default.create({
-        baseURL: auth.baseUrl,
-        params: { apikey: auth.apiKey }
+        baseURL: path_1.default.join(auth.baseUrl, '/api/v3/'),
+        params: { apikey: auth.apiKey },
+        headers: {
+            'X-Api-Key': auth.apiKey
+        }
     });
 }
 // Fetch all movies 
@@ -31,20 +36,22 @@ async function fetchMovies(auth) {
         return response.data;
     }
     catch (error) {
-        console.error('Error fetching movies from Secondary Radarr:', (0, error_1.getMessage)(error));
+        console.error('Error fetching movies from Radarr:', (0, error_1.getMessage)(error));
         throw error;
     }
 }
 // Fetch movies from the saved list
 async function fetchMoviesFromList(auth, listId) {
+    let movies;
     try {
-        const response = await getApi(auth).get(`/list/${listId}/movie`);
-        return response.data;
+        const response = await getApi(auth).get(`/importlist/movie`);
+        movies = response.data;
     }
     catch (error) {
-        console.error('Error fetching movies from Secondary list:', (0, error_1.getMessage)(error));
+        console.error('Error fetching movies from list:', (0, error_1.getMessage)(error));
         throw error;
     }
+    return movies.filter((movie) => movie.lists?.includes(listId));
 }
 // Update monitoring status in the Secondary instance
 async function updateMovieMonitoring(auth, movieId, monitored) {
@@ -69,12 +76,36 @@ function deleteMovieDirectory(rootFolder, movie) {
         console.error(`Error deleting folder ${movieFolderPath}:`, (0, error_1.getMessage)(error));
     }
 }
-async function removeMovie(_auth, movie) {
-    console.log('This would Remove: ' + movie.title);
+async function removeMovie(auth, movie) {
     // Un-monitors
-    // await updateMovieMonitoring(auth, movie.id, false);
-    // // Deletes movie
-    // await getApi(auth).delete(`/movie/${movie.id}`)
-    // // Deletes movie folder
-    // deleteMovieDirectory(getEnv(process.env.SECONDARY_ROOT, 'Secondary Root'), movie)
+    console.log('Unmonitoring');
+    await updateMovieMonitoring(auth, movie.id, false);
+    // Deletes movie
+    console.log('Deleting from Database');
+    await getApi(auth).delete(`/movie/${movie.id}`);
+    // Deletes movie folder
+    console.log('Deleting files');
+    deleteMovieDirectory((0, env_1.getEnv)(process.env.SECONDARY_ROOT, 'Secondary Root'), movie);
+    // Halts any active downloads
+    console.log('Halting downloads');
+    await stopMovieDownload(auth, movie.id);
+}
+async function fetchDownloadingMovieIds(auth) {
+    try {
+        const response = await getApi(auth).get('/queue/details');
+        return response.data;
+    }
+    catch (error) {
+        console.error(`Error fetching download queue movies:`, (0, error_1.getMessage)(error));
+        throw error;
+    }
+}
+async function stopMovieDownload(auth, movieId) {
+    const queueDetails = await fetchDownloadingMovieIds(auth);
+    const queueIds = queueDetails.filter((detail) => detail.movieId === movieId).map(({ id }) => id);
+    for (let queueId of queueIds) {
+        console.log(`Stopping Download for: ${queueId}`);
+        await getApi(auth).delete(`/queue/${queueId}`);
+    }
+    console.log(`Stopped ${queueIds.length} active downloads`);
 }

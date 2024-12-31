@@ -1,7 +1,14 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
 import { getEnv } from './lib/env';
 import { getMessage } from './lib/error';
 import { fetchMovies, fetchMoviesFromList, getApiAuth, removeMovie } from './lib/radarr';
+
+// Ensures a consistent working directory
+process.chdir(path.resolve(__dirname, '../'))
+
+// Loads environment variables
+dotenv.config();
 
 // Configuration
 const auth = getApiAuth(process.env.SECONDARY_URL, process.env.SECONDARY_API_KEY, 'Secondary')

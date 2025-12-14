@@ -6,21 +6,20 @@
   "author": "Jamie Clark",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.7.9",
-    "dotenv": "^16.4.7",
-    "npx": "^10.2.2",
-    "typescript": "^5.7.2"
+    "axios": "^1.13.2",
+    "dotenv": "^16.6.1",
+    "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
-    "rimraf": "^6.0.1",
+    "@types/node": "^22.19.3",
+    "rimraf": "^6.1.2",
     "ts-node": "^10.9.2"
   },
   "scripts": {
-    "clean": "rimraf dist/*",
-    "build": "npm run prebuild && npx tsc && npm run postbuild",
+    "clean": "node scripts/clean.js",
+    "build": "npm run prebuild && npm exec -- tsc && npm run postbuild",
     "prebuild": "npm run clean",
     "postbuild": "",
-    "sync:dev": "npx ts-node ./src/syncRadarr.ts"
+    "sync:dev": "npm exec -- ts-node ./src/syncRadarr.ts"
   }
 }

@@ -16,6 +16,10 @@ process.chdir(path.resolve(__dirname, "../"));
 // Loads environment variables
 dotenv.config();
 
+// Parse command-line arguments
+const args = process.argv.slice(2);
+const isDryRun = args.includes("--dry-run") || args.includes("-d");
+
 // Configuration
 const auth = getApiAuth(
   process.env.SECONDARY_URL,
@@ -34,7 +38,13 @@ const logger = new Logger("sync-radarr.log", 7);
 async function syncRadarr() {
   // Initialize logger and clean up old entries
   logger.initialize();
-  logger.info("Starting Radarr sync process");
+  if (isDryRun) {
+    logger.info(
+      "Starting Radarr sync process (DRY RUN MODE - no movies will be deleted)"
+    );
+  } else {
+    logger.info("Starting Radarr sync process");
+  }
 
   let count: number = 0;
 
@@ -78,19 +88,33 @@ async function syncRadarr() {
       process.exit(1);
     }
 
-    // Check Secondary instance movies and un-monitor if not in the Secondary list
-    for (const movie of moviesToDelete) {
-      const deletionMsg = `Deleting movie: ${movie.title} (ID: ${movie.id}, TMDB: ${movie.tmdbId}) - No longer in list`;
-      logger.info(deletionMsg);
-      try {
-        await removeMovie(auth, movie);
-        count += 1;
-      } catch (error) {
-        logger.error(
-          `Failed to delete movie ${movie.title} (ID: ${
-            movie.id
-          }): ${getMessage(error)}`
-        );
+    // Display movies that would be deleted (or actually delete them)
+    if (moviesToDelete.length === 0) {
+      logger.info("No movies to delete - library is in sync with the list");
+    } else {
+      if (isDryRun) {
+        logger.info(`DRY RUN: Would delete ${moviesToDelete.length} movie(s):`);
+        for (const movie of moviesToDelete) {
+          const deletionMsg = `  - ${movie.title} (ID: ${movie.id}, TMDB: ${movie.tmdbId})`;
+          logger.info(deletionMsg);
+        }
+        count = moviesToDelete.length;
+      } else {
+        // Check Secondary instance movies and un-monitor if not in the Secondary list
+        for (const movie of moviesToDelete) {
+          const deletionMsg = `Deleting movie: ${movie.title} (ID: ${movie.id}, TMDB: ${movie.tmdbId}) - No longer in list`;
+          logger.info(deletionMsg);
+          try {
+            await removeMovie(auth, movie);
+            count += 1;
+          } catch (error) {
+            logger.error(
+              `Failed to delete movie ${movie.title} (ID: ${
+                movie.id
+              }): ${getMessage(error)}`
+            );
+          }
+        }
       }
     }
   } catch (error) {
@@ -99,9 +123,15 @@ async function syncRadarr() {
     process.exit(1);
   }
 
-  logger.info(
-    `Sync completed: Removed ${count} movies that are no longer on the list`
-  );
+  if (isDryRun) {
+    logger.info(
+      `DRY RUN completed: Would remove ${count} movie(s) that are no longer on the list`
+    );
+  } else {
+    logger.info(
+      `Sync completed: Removed ${count} movies that are no longer on the list`
+    );
+  }
 }
 
 // Run the sync process

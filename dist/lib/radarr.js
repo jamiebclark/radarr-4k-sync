@@ -8,6 +8,7 @@ exports.getApi = getApi;
 exports.fetchMovies = fetchMovies;
 exports.fetchMoviesFromList = fetchMoviesFromList;
 exports.updateMovieMonitoring = updateMovieMonitoring;
+exports.getMovieSubfolder = getMovieSubfolder;
 exports.deleteMovieDirectory = deleteMovieDirectory;
 exports.removeMovie = removeMovie;
 exports.fetchDownloadingMovieIds = fetchDownloadingMovieIds;
@@ -63,14 +64,19 @@ async function updateMovieMonitoring(auth, movieId, monitored) {
         console.error(`Error updating monitoring for movieId ${movieId}:`, (0, error_1.getMessage)(error));
     }
 }
+function getMovieSubfolder(movie) {
+    return movie.path.substring(movie.rootFolderPath.length);
+}
 function deleteMovieDirectory(rootFolder, movie) {
-    const movieFolderPath = path_1.default.join(rootFolder, movie.title);
+    const movieFolderPath = path_1.default.join(rootFolder, getMovieSubfolder(movie));
+    console.log(`Deleting movie folder: "${movieFolderPath}"`);
     if (!fs_1.default.existsSync(movieFolderPath)) {
+        console.log('Folder does not exist. Skipping.');
         return;
     }
     try {
         fs_1.default.rmSync(movieFolderPath, { recursive: true, force: true });
-        console.log(`Deleted movie folder: ${movieFolderPath}`);
+        console.log(`Deleted movie folder`);
     }
     catch (error) {
         console.error(`Error deleting folder ${movieFolderPath}:`, (0, error_1.getMessage)(error));
@@ -80,15 +86,15 @@ async function removeMovie(auth, movie) {
     // Un-monitors
     console.log('Unmonitoring');
     await updateMovieMonitoring(auth, movie.id, false);
+    // Halts any active downloads
+    console.log('Halting downloads');
+    await stopMovieDownload(auth, movie.id);
     // Deletes movie
     console.log('Deleting from Database');
     await getApi(auth).delete(`/movie/${movie.id}`);
     // Deletes movie folder
     console.log('Deleting files');
     deleteMovieDirectory((0, env_1.getEnv)(process.env.SECONDARY_ROOT, 'Secondary Root'), movie);
-    // Halts any active downloads
-    console.log('Halting downloads');
-    await stopMovieDownload(auth, movie.id);
 }
 async function fetchDownloadingMovieIds(auth) {
     try {

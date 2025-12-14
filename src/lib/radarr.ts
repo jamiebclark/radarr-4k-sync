@@ -9,7 +9,9 @@ export interface Movie {
   title: string,
   tmdbId: string,
   monitored: boolean,
-  lists?: number[]
+  lists?: number[],
+  path: string,
+  rootFolderPath: string
 }
 
 interface QueueDetails {
@@ -70,15 +72,22 @@ export async function updateMovieMonitoring(auth: ApiAuth, movieId: number, moni
   }
 }
 
+export function getMovieSubfolder(movie: Movie) {
+  return movie.path.substring(movie.rootFolderPath.length)
+}
+
 export function deleteMovieDirectory(rootFolder: string, movie: Movie) {
-  const movieFolderPath = path.join(rootFolder, movie.title)
+  const movieFolderPath = path.join(rootFolder, getMovieSubfolder(movie))
+
+  console.log(`Deleting movie folder: "${movieFolderPath}"`)
   if (!fs.existsSync(movieFolderPath)) {
+    console.log('Folder does not exist. Skipping.')
     return;
   }
 
   try {
     fs.rmSync(movieFolderPath, { recursive: true, force: true })
-    console.log(`Deleted movie folder: ${movieFolderPath}`)
+    console.log(`Deleted movie folder`)
   } catch (error) {
     console.error(`Error deleting folder ${movieFolderPath}:`, getMessage(error))
   }
@@ -89,6 +98,10 @@ export async function removeMovie(auth: ApiAuth, movie: Movie) {
   console.log('Unmonitoring')
   await updateMovieMonitoring(auth, movie.id, false);
 
+  // Halts any active downloads
+  console.log('Halting downloads')
+  await stopMovieDownload(auth, movie.id)
+
   // Deletes movie
   console.log('Deleting from Database')
   await getApi(auth).delete(`/movie/${movie.id}`)
@@ -96,10 +109,6 @@ export async function removeMovie(auth: ApiAuth, movie: Movie) {
   // Deletes movie folder
   console.log('Deleting files')
   deleteMovieDirectory(getEnv(process.env.SECONDARY_ROOT, 'Secondary Root'), movie)
-
-  // Halts any active downloads
-  console.log('Halting downloads')
-  await stopMovieDownload(auth, movie.id)
 }
 
 export async function fetchDownloadingMovieIds(auth: ApiAuth): Promise<QueueDetails[]> {
